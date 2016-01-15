@@ -36,17 +36,17 @@ defmodule Pipeline do
     foo(parentpid, fun)
   end
 
-  def go(pids, queues) do
+  def go(pids, state) do
     # stuff and then
     receive do
       {childpid, message} ->
-        IO.puts "At start, here are the queues:"
-        IO.inspect(queues)
+        IO.puts "At start, here are the state:"
+        IO.inspect(state)
         IO.inspect ["Message from", childpid, message]
         send childpid, :now
-        newqueue = [message | queues[childpid]]
-        newmap = Map.put(queues, childpid, newqueue)
-        go(pids, newmap)
+        newqueue = [message | state[childpid].queue]
+        state = put_in(state, [childpid, :queue], newqueue)
+        go(pids, state)
     end
   end
 
@@ -62,7 +62,11 @@ defmodule Pipeline do
       send pid, :now
     end)
 
-    go(child_pids, child_pids |> Enum.map(fn pid -> {pid, []} end) |> Enum.into(%{}))
+    go(child_pids, 
+       child_pids 
+       |> Enum.map(fn pid -> {pid, %{queue: [], status: :busy}} end) 
+       |> Enum.into(%{})
+    )
   end
 
 end
