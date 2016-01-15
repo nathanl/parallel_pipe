@@ -40,14 +40,31 @@ defmodule Pipeline do
     # stuff and then
     receive do
       {childpid, message} ->
-        IO.puts "At start, here are the state:"
-        IO.inspect(state)
-        IO.inspect ["Message from", childpid, message]
+        # IO.puts "At start, here are the state:"
+        # IO.inspect(state)
+        case message do
+          "cake" -> IO.inspect ["Message from", childpid, message]
+          "pie" -> :do_nothing
+        end
+
         send childpid, :now
+
+        pos = state[childpid].pos
         newqueue = [message | state[childpid].queue]
-        state = put_in(state, [childpid, :queue], newqueue)
-        go(pids, state)
+        newstate = put_in(state, [childpid, :queue], newqueue)
+
+        next_proc_info =
+          Enum.find(state, fn {_, %{:pos => p}} -> p == pos + 1 end)
+
+        IO.inspect ["next proc info is", next_proc_info]
+
+        case next_proc_info do
+          nil -> IO.puts "nobody is after that guy!"
+          {next_func_pid, _} -> send next_func_pid, :now
+        end
     end
+
+    go(pids, newstate)
   end
 
   def start(functions) when is_list(functions) do
@@ -62,7 +79,8 @@ defmodule Pipeline do
 
     go(child_pids, 
        child_pids 
-       |> Enum.map(fn pid -> {pid, %{queue: [], status: :busy}} end) 
+       |> Enum.with_index
+       |> Enum.map(fn {pid, i} -> {pid, %{pos: i, queue: [], status: :busy}} end) 
        |> Enum.into(%{})
     )
   end
