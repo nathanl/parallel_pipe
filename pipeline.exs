@@ -42,12 +42,11 @@ defmodule Pipeline do
     Enum.each(child_pids, fn pid ->
       send pid, :now
     end)
-    receive do
-      message -> IO.puts message
-    end
-    receive do
-      message -> IO.puts message
-    end
+    Enum.each(child_pids, fn _ ->
+      receive do
+        message -> IO.puts message
+      end
+    end)
   end
 
 end
