@@ -29,23 +29,33 @@
 
 defmodule Pipeline do
 
+  def foo(parentpid, fun) do
+    receive do
+      :now -> send parentpid, fun.()
+    end
+    foo(parentpid, fun)
+  end
+
   def start(functions) when is_list(functions) do
     parentpid = self
     child_pids = Enum.map(functions, fn (function) -> 
       spawn_link(fn ->
-        receive do
-          :now -> send parentpid, function.()
-        end
+        foo(parentpid, function)
       end)
     end)
 
     Enum.each(child_pids, fn pid ->
       send pid, :now
+      send pid, :now
+      send pid, :now
+      send pid, :now
     end)
-    Enum.each(child_pids, fn _ ->
-      receive do
-        message -> IO.puts message
-      end
+    1..4 |> Enum.each(fn _ ->
+      Enum.each(child_pids, fn _ ->
+        receive do
+          message -> IO.puts message
+        end
+      end)
     end)
   end
 
