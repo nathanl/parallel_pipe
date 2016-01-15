@@ -58,9 +58,7 @@ defmodule Pipeline do
       end)
     end)
 
-    Enum.each(child_pids, fn pid ->
-      send pid, :now
-    end)
+    send hd(child_pids), :now
 
     go(child_pids, 
        child_pids 
