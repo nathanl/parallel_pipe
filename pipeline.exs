@@ -31,27 +31,23 @@ defmodule Pipeline do
 
   def foo(parentpid, fun) do
     receive do
-      :now -> send parentpid, fun.()
+      :now -> send parentpid, {self, fun.()}
     end
     foo(parentpid, fun)
   end
 
   def go(pids, queues) do
     # stuff and then
-    Enum.each(pids, fn pid ->
-      send pid, :now
-      send pid, :now
-      send pid, :now
-      send pid, :now
-    end)
-    1..4 |> Enum.each(fn _ ->
-      Enum.each(pids, fn _ ->
-        receive do
-          message -> IO.puts message
-        end
-      end)
-    end)
-    go(pids, queues)
+    receive do
+      {childpid, message} ->
+        IO.puts "At start, here are the queues:"
+        IO.inspect(queues)
+        IO.inspect ["Message from", childpid, message]
+        send childpid, :now
+        newqueue = [message | queues[childpid]]
+        newmap = Map.put(queues, childpid, newqueue)
+        go(pids, newmap)
+    end
   end
 
   def start(functions) when is_list(functions) do
@@ -62,7 +58,11 @@ defmodule Pipeline do
       end)
     end)
 
-    go(child_pids, child_pids |> Enum.map(fn _ -> [] end))
+    Enum.each(child_pids, fn pid ->
+      send pid, :now
+    end)
+
+    go(child_pids, child_pids |> Enum.map(fn pid -> {pid, []} end) |> Enum.into(%{}))
   end
 
 end
