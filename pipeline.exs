@@ -30,9 +30,22 @@
 defmodule Pipeline do
 
   def start(functions) when is_list(functions) do
-    Enum.each(functions, fn (function) -> function.() end)
+    parentpid = self
+    Enum.each(functions, fn (function) -> 
+      spawn_link(fn ->
+        result = function.()
+        send parentpid, result
+      end)
+    end)
+
+    receive do
+      message -> IO.puts message
+    end
+    receive do
+      message -> IO.puts message
+    end
   end
 
 end
 
-Pipeline.start([(fn -> IO.puts "cake" end), (fn -> IO.puts "pie" end)])
+Pipeline.start([fn -> "cake" end, fn -> "pie" end])
