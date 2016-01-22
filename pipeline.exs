@@ -29,58 +29,65 @@
 
 defmodule Pipeline do
 
-  def foo(parentpid, fun) do
+  def await_requests(parentpid, fun) do
     receive do
-      :now -> send parentpid, {self, fun.()}
+      :emit_a_value -> send parentpid, {self, fun.()}
     end
-    foo(parentpid, fun)
+    await_requests(parentpid, fun)
   end
 
-  def go(pids, state) do
+  def go(acc) do
     # stuff and then
     receive do
-      {childpid, message} ->
-        # IO.puts "At start, here are the state:"
-        # IO.inspect(state)
+      {child_pid, message} ->
+        # IO.puts "At start, here are the acc:"
+        # IO.inspect(acc)
         case message do
-          "cake" -> IO.inspect ["Message from", childpid, message]
+          "cake" -> IO.inspect ["Message from", child_pid, message]
           "pie" -> :do_nothing
         end
 
-        send childpid, :now
+        # Get the child working on the next thing
+        send child_pid, :emit_a_value
 
-        pos = state[childpid].pos
-        newqueue = [message | state[childpid].queue]
-        newstate = put_in(state, [childpid, :queue], newqueue)
+        # Store whatever the child return in its outbox
+        state = acc[child_pid]
+        state = %{state | outbox: state.outbox ++ [message]}
+        acc = Map.put(acc, child_pid, state)
 
-        next_proc_info =
-          Enum.find(state, fn {_, %{:pos => p}} -> p == pos + 1 end)
+        # Find the sibling so we can hand it a message
+        pos = state.pos
+        sibling_state =
+          Enum.find(acc, fn {_, %{:pos => p}} -> p == pos + 1 end)
 
-        IO.inspect ["next proc info is", next_proc_info]
+        IO.inspect ["sibling state is", sibling_state]
 
-        case next_proc_info do
+        case sibling_state do
           nil -> IO.puts "nobody is after that guy!"
-          {next_func_pid, _} -> send next_func_pid, :now
+          {sibling_pid, _} -> send sibling_pid, :emit_a_value
         end
     end
 
-    go(pids, newstate)
+    go(acc)
   end
 
   def start(functions) when is_list(functions) do
     parentpid = self
     child_pids = Enum.map(functions, fn (function) -> 
       spawn_link(fn ->
-        foo(parentpid, function)
+        await_requests(parentpid, function)
       end)
     end)
 
-    send hd(child_pids), :now
+    # tell first one to start
+    send hd(child_pids), :emit_a_value
 
-    go(child_pids, 
-       child_pids 
+    go(child_pids 
        |> Enum.with_index
-       |> Enum.map(fn {pid, i} -> {pid, %{pos: i, queue: [], status: :busy}} end) 
+       |> Enum.map(fn 
+        {pid, 0} -> {pid, %{pos: 0, outbox: [], status: :busy}}
+        {pid, i} -> {pid, %{pos: i, outbox: [], status: :idle}}
+       end) 
        |> Enum.into(%{})
     )
   end
