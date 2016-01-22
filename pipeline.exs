@@ -42,28 +42,30 @@ defmodule Pipeline do
       {child_pid, message} ->
         # IO.puts "At start, here are the acc:"
         # IO.inspect(acc)
-        case message do
-          "cake" -> IO.inspect ["Message from", child_pid, message]
-          "pie" -> :do_nothing
-        end
-
-        # Get the child working on the next thing
-        send child_pid, :emit_a_value
+        IO.inspect ["Message from", child_pid, message]
 
         # Store whatever the child return in its outbox
         state = acc[child_pid]
         state = %{state | outbox: state.outbox ++ [message]}
         acc = Map.put(acc, child_pid, state)
 
-        # Find the sibling so we can hand it a message
+        # Where in the list of functions is the child?
         pos = state.pos
+
+        # Find the sibling so we can hand it a message
         sibling_state =
           Enum.find(acc, fn {_, %{:pos => p}} -> p == pos + 1 end)
 
         IO.inspect ["sibling state is", sibling_state]
 
+        # First one takes no params, just gimme another value
+        if pos == 0 do
+          send child_pid, :emit_a_value
+        end
+
         case sibling_state do
           nil -> IO.puts "nobody is after that guy!"
+          # TODO: pass message in from queue.
           {sibling_pid, _} -> send sibling_pid, :emit_a_value
         end
     end
@@ -94,4 +96,4 @@ defmodule Pipeline do
 
 end
 
-Pipeline.start([fn -> "cake" end, fn -> "pie" end])
+Pipeline.start([fn -> :random.uniform end, fn -> "cake {el}" end, fn -> "pie {el}" end])
