@@ -1,7 +1,7 @@
 # Get a list of functions
-# Start one child process per function
-# Make list/tuple of statuses, one per child process, like :idle or :busy
-# Make an outbox queue for each child process
+# Start one worker process per function
+# Make list/tuple of statuses, one per worker process, like :idle or :busy
+# Make an outbox queue for each worker process
 # forever:
 # for each outbox:
 #   if outbox is not empty, and
@@ -19,8 +19,8 @@
 # return! profit! PS: there is no return in Elixir :(
 
 # Things we need to know how to do:
-# 1. create a child process
-# 2. send a message to a child and get a message back.
+# 1. create a worker process
+# 2. send a message to a worker and get a message back.
 # 3. put a message in a queue.
 # 4. mark them as :idle or :busy which, since we can't have state,
 #     really means accumulating this data.
@@ -29,72 +29,77 @@
 
 defmodule Pipeline do
 
-  def await_requests(parentpid, fun) do
-    receive do
-      :emit_a_value -> send parentpid, {self, fun.()}
-      {:emit_a_value_and_use_this, x} -> send parentpid, {self, fun.(x)}
+  defmodule Worker do
+    def await_requests(parentpid, fun) do
+      receive do
+        :emit_a_value -> send parentpid, {self, fun.()}
+        {:process_this, x} -> send parentpid, {self, fun.(x)}
+      end
+      await_requests(parentpid, fun)
     end
-    await_requests(parentpid, fun)
   end
 
-  def go(acc) do
-    # stuff and then
-    receive do
-      {child_pid, outputs} ->
-        # Store whatever the child return in its outbox
-        state = acc[child_pid]
-        state = %{state | outbox: state.outbox ++ outputs}
-        acc = Map.put(acc, child_pid, state)
+  defmodule Foreman do
+    def manage(assembly_line) do
+      receive do
+        {worker_pid, outputs} ->
+          # Store the worker's outputs in its outbox
+          state = assembly_line[worker_pid]
+          state = %{state | outbox: state.outbox ++ outputs}
+          assembly_line = Map.put(assembly_line, worker_pid, state)
 
-        # Where in the list of functions is the child?
-        pos = state.pos
+          # Where in the list of functions is the worker?
+          pos = state.pos
 
-        # Find the sibling so we can hand it a single output
-        consumer_state =
-          Enum.find(acc, fn {_, %{:pos => p}} -> p == pos + 1 end)
+          # Find the next worker so we can hand it a single output
+          next_worker_state =
+          Enum.find(assembly_line, fn {_, %{:pos => p}} -> p == pos + 1 end)
 
-        # First one takes no params, just gimme another value
-        if pos == 0 do
-          send child_pid, :emit_a_value
-        end
+          # First one takes no params, just gimme another value
+          if pos == 0 do
+            send worker_pid, :emit_a_value
+          end
 
-        acc = case consumer_state do
-          nil -> 
+          assembly_line = case next_worker_state do
+            nil -> 
             # End of the line, so print everything it produced
             state.outbox |> Enum.each(fn el -> IO.puts(el) end)
             state = %{state | outbox: []}
-            Map.put(acc, child_pid, state)
-          {sibling_pid, _} -> 
-            # Send the item to the child's sibling.
+            Map.put(assembly_line, worker_pid, state)
+            {next_worker_pid, _} -> 
+            # Send the item to the next worker
+            # TODO - handle case where outbox is empty - hd() will error
             one_item = hd(state.outbox)
-            send sibling_pid, {:emit_a_value_and_use_this, one_item}
+            send next_worker_pid, {:process_this, one_item}
             state = %{state | outbox: tl(state.outbox)}
-            Map.put(acc, child_pid, state)
-        end
-    end
+            Map.put(assembly_line, worker_pid, state)
+          end
+      end
 
-    go(acc)
+      manage(assembly_line)
+    end
   end
 
   def start(functions) when is_list(functions) do
-    parentpid = self
-    child_pids = Enum.map(functions, fn (function) -> 
+    manager_pid = self
+    worker_pids = Enum.map(functions, fn (function) -> 
       spawn_link(fn ->
-        await_requests(parentpid, function)
+        Worker.await_requests(manager_pid, function)
       end)
     end)
 
     # tell first one to start
-    send hd(child_pids), :emit_a_value
+    send hd(worker_pids), :emit_a_value
 
-    go(child_pids 
+    assembly_line = worker_pids 
        |> Enum.with_index
        |> Enum.map(fn 
         {pid, 0} -> {pid, %{pos: 0, outbox: [], status: :busy}}
         {pid, i} -> {pid, %{pos: i, outbox: [], status: :idle}}
        end) 
        |> Enum.into(%{})
-    )
+
+    Foreman.manage(assembly_line)
   end
 
 end
