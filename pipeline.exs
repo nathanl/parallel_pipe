@@ -40,16 +40,16 @@ defmodule Pipeline do
   def go(acc) do
     # stuff and then
     receive do
-      {child_pid, message} ->
+      {child_pid, outputs} ->
         # Store whatever the child return in its outbox
         state = acc[child_pid]
-        state = %{state | outbox: state.outbox ++ [message]}
+        state = %{state | outbox: state.outbox ++ outputs}
         acc = Map.put(acc, child_pid, state)
 
         # Where in the list of functions is the child?
         pos = state.pos
 
-        # Find the sibling so we can hand it a message
+        # Find the sibling so we can hand it a single output
         consumer_state =
           Enum.find(acc, fn {_, %{:pos => p}} -> p == pos + 1 end)
 
@@ -58,18 +58,18 @@ defmodule Pipeline do
           send child_pid, :emit_a_value
         end
 
-        # Pop an item from the child's outbox.
-        popped_item_from_queue = hd(state.outbox)
-        state = %{state | outbox: tl(state.outbox)}
-        acc = Map.put(acc, child_pid, state)
-
-        case consumer_state do
+        acc = case consumer_state do
           nil -> 
-            # Noone is there to receive the item.  Print it.
-            IO.puts(popped_item_from_queue)
+            # End of the line, so print everything it produced
+            state.outbox |> Enum.each(fn el -> IO.puts(el) end)
+            state = %{state | outbox: []}
+            Map.put(acc, child_pid, state)
           {sibling_pid, _} -> 
             # Send the item to the child's sibling.
-            send sibling_pid, {:emit_a_value_and_use_this, popped_item_from_queue}
+            one_item = hd(state.outbox)
+            send sibling_pid, {:emit_a_value_and_use_this, one_item}
+            state = %{state | outbox: tl(state.outbox)}
+            Map.put(acc, child_pid, state)
         end
     end
 
@@ -100,7 +100,7 @@ defmodule Pipeline do
 end
 
 Pipeline.start([
-   fn -> :random.uniform end, 
-   fn el -> "cake #{el}" end, 
-   fn el -> "pie #{el}" end
+   fn -> [:random.uniform] end,
+   fn el -> ["cake #{el}"] end,
+   fn el -> ["eat   #{el}", "vomit #{el}"] end
  ])
