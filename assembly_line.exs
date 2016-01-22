@@ -27,7 +27,14 @@
 # 5. instead of a forloop, do some horrible reduce or something.
 # 6. instead of 'loop forever', call ourselves tail-recursively.
 
-defmodule Pipeline do
+# TODO
+# - Define a max size for outbox
+# - Mark first worker idle if outbox is full
+# - After processing an incoming message, start looking through worker's states and outboxes and assigning states and work accordingly.
+#
+# Run with `elixir assembly_line.exs | head -30`
+
+defmodule AssemblyLine do
 
   defmodule Worker do
     def await_requests(parentpid, fun) do
@@ -104,7 +111,7 @@ defmodule Pipeline do
 
 end
 
-Pipeline.start([
+AssemblyLine.start([
    fn -> [:random.uniform] end,
    fn number -> ["cake #{number}"] end,
    fn cake -> ["eat  #{cake}", "poop #{cake}"] end
