@@ -32,6 +32,7 @@ defmodule Pipeline do
   def await_requests(parentpid, fun) do
     receive do
       :emit_a_value -> send parentpid, {self, fun.()}
+      {:emit_a_value_and_use_this, x} -> send parentpid, {self, fun.(x)}
     end
     await_requests(parentpid, fun)
   end
@@ -40,10 +41,6 @@ defmodule Pipeline do
     # stuff and then
     receive do
       {child_pid, message} ->
-        # IO.puts "At start, here are the acc:"
-        # IO.inspect(acc)
-        IO.inspect ["Message from", child_pid, message]
-
         # Store whatever the child return in its outbox
         state = acc[child_pid]
         state = %{state | outbox: state.outbox ++ [message]}
@@ -53,20 +50,26 @@ defmodule Pipeline do
         pos = state.pos
 
         # Find the sibling so we can hand it a message
-        sibling_state =
+        consumer_state =
           Enum.find(acc, fn {_, %{:pos => p}} -> p == pos + 1 end)
-
-        IO.inspect ["sibling state is", sibling_state]
 
         # First one takes no params, just gimme another value
         if pos == 0 do
           send child_pid, :emit_a_value
         end
 
-        case sibling_state do
-          nil -> IO.puts "nobody is after that guy!"
-          # TODO: pass message in from queue.
-          {sibling_pid, _} -> send sibling_pid, :emit_a_value
+        # Pop an item from the child's outbox.
+        popped_item_from_queue = hd(state.outbox)
+        state = %{state | outbox: tl(state.outbox)}
+        acc = Map.put(acc, child_pid, state)
+
+        case consumer_state do
+          nil -> 
+            # Noone is there to receive the item.  Print it.
+            IO.puts(popped_item_from_queue)
+          {sibling_pid, _} -> 
+            # Send the item to the child's sibling.
+            send sibling_pid, {:emit_a_value_and_use_this, popped_item_from_queue}
         end
     end
 
@@ -96,4 +99,8 @@ defmodule Pipeline do
 
 end
 
-Pipeline.start([fn -> :random.uniform end, fn -> "cake {el}" end, fn -> "pie {el}" end])
+Pipeline.start([
+   fn -> :random.uniform end, 
+   fn el -> "cake #{el}" end, 
+   fn el -> "pie #{el}" end
+ ])
