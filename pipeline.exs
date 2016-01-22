@@ -101,6 +101,6 @@ end
 
 Pipeline.start([
    fn -> [:random.uniform] end,
-   fn el -> ["cake #{el}"] end,
-   fn el -> ["eat   #{el}", "vomit #{el}"] end
+   fn number -> ["cake #{number}"] end,
+   fn cake -> ["eat  #{cake}", "poop #{cake}"] end
  ])
