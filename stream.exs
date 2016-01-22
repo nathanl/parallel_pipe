@@ -25,23 +25,28 @@
 defmodule Bar do
   defstruct lst: [], len: 0
 
+  # how to update a map!
+  # map1 = %{foo: "bar"}
+  # map2 = %{map1 | baz: "buzz"}
+
   def map(somebar, func) do
-    reducer = fn x, acc -> {:cont, %{acc | lst: acc.lst ++ [func.(x)], len: acc.len+1}} end
+    reducer = fn x, bar_acc -> {:cont, %{bar_acc | lst: bar_acc.lst ++ [func.(x)], len: bar_acc.len+1}} end
     {:done, thing} = Enumerable.reduce(somebar, {:cont, %Bar{}}, reducer) 
     thing
    # |> elem(1) |> :lists.reverse()
    # I'm supposed to return anything, as long as it implements the Enumerable protocol.
    # aka I separately define Enumerable.reduce() for it.
-   # Enumerable.reduce(me, acc, f)
+   # Enumerable.reduce(me, bar_acc, f)
    # will in turn call func() on each value in enum.
   end
 
   def take(somebar, n) do
     f = fn 
-      _, {acc, 0} -> {:halt, acc}
-      x, {acc, i} -> {:cont, {%{acc | lst: acc.lst ++ [x], len: acc.len+1}, i-1}}
+      _, {bar_acc, i} when i <= 0 -> {:halt, bar_acc} 
+      el, {bar_acc, i} -> {:cont, {%{bar_acc | lst: bar_acc.lst ++ [el], len: bar_acc.len+1}, i-1}}
+
     end
-    Enumerable.reduce(somebar, {:cont, {%Bar{}, n}}, f)
+    Enumerable.reduce(somebar, {:cont, {%Bar{}, n}}, f) |> elem(1)
   end
 end
 
