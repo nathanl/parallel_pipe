@@ -6,3 +6,4 @@ require Bar
 |> Bar.map(&(&1 + 2))
 |> Bar.take(3)
 |> IO.inspect
+
