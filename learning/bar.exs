@@ -23,6 +23,15 @@ defmodule Bar do
     end
     Enumerable.reduce(somebar, {:cont, {%Bar{}, n}}, f) |> elem(1)
   end
+
+  # This function implementation really highlights that Enumerable.reduce() is
+  # mostly a regular reduce with an annoying {:cont} that you have to pass
+  # around along with the accumulator.  But of course, Enumerable.reduce() can
+  # also be halted early or suspended, which Bar.reduce() can't.
+  def reduce(somebar, acc, fun) do
+    {:done, result} = Enumerable.reduce(somebar, acc, &({:cont, fun.(&1, &2)}))
+    result
+  end
 end
 
 
@@ -85,3 +94,12 @@ defimpl Enumerable, for: Bar do
   end
 end
 
+defimpl Collectable, for: Bar do
+  def into(somebar) do
+    {somebar, fn
+      _bar, :halt -> nil
+      bar, :done -> bar
+      bar, {:cont, el} -> Bar.append(bar, el)
+    end}
+  end
+end
