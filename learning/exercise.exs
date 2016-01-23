@@ -1,4 +1,4 @@
-#usage: elixir -r stream.exs stream2.exs
+#usage: elixir -r bar.exs exercise.exs
 
 require Bar
 
