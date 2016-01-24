@@ -28,8 +28,11 @@ defmodule Bar do
   # mostly a regular reduce with an annoying {:cont} that you have to pass
   # around along with the accumulator.  But of course, Enumerable.reduce() can
   # also be halted early or suspended, which Bar.reduce() can't.
+  #
+  # Also worth mentioning that this is a useless function, because it doesn't
+  # do anything Bar-specific.  Enum.reduce() is basically identical.
   def reduce(somebar, acc, fun) do
-    {:done, result} = Enumerable.reduce(somebar, acc, &({:cont, fun.(&1, &2)}))
+    {:done, result} = Enumerable.reduce(somebar, {:cont, acc}, &({:cont, fun.(&1, &2)}))
     result
   end
 end
