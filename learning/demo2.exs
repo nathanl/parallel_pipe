@@ -1,4 +1,4 @@
-#usage: elixir -r bar.exs comps.exs
+#usage: elixir -r bar.exs demo2.exs
 
 require Bar
 
