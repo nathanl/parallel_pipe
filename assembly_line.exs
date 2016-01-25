@@ -67,20 +67,19 @@ defmodule AssemblyLine do
             send worker_pid, :emit_a_value
           end
 
-          assembly_line = case next_worker_state do
+          new_outbox = case next_worker_state do
             nil -> 
-            # End of the line, so print everything it produced
-            state.outbox |> Enum.each(fn el -> IO.puts(el) end)
-            state = %{state | outbox: []}
-            Map.put(assembly_line, worker_pid, state)
+              # End of the line, so print everything it produced
+              state.outbox |> Enum.each(fn el -> IO.puts(el) end)
+              []
             {next_worker_pid, _} -> 
-            # Send the item to the next worker
-            # TODO - handle case where outbox is empty - hd() will error
-            one_item = hd(state.outbox)
-            send next_worker_pid, {:process_this, one_item}
-            state = %{state | outbox: tl(state.outbox)}
-            Map.put(assembly_line, worker_pid, state)
+              # Send the item to the next worker
+              # TODO - handle case where outbox is empty - hd() will error
+              one_item = hd(state.outbox)
+              send next_worker_pid, {:process_this, one_item}
+              tl(state.outbox)
           end
+          assembly_line = put_in(assembly_line, [worker_pid, :outbox], new_outbox)
       end
 
       manage(assembly_line)
