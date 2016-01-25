@@ -35,9 +35,11 @@ end
 defimpl Enumerable, for: FancyRange do
   def reduce(_,    {:halt,    acc}, _fun), do: {:halted, acc}
   def reduce(enum, {:suspend, acc},  fun), do: {:suspended, acc, &(reduce(enum, &1, fun))}
-  def reduce(enum, {:cont,    acc}, _fun) when enum.from > enum.to, do: {:done, acc}
-  def reduce(enum, {:cont,    acc},  fun), do
-    reduce(%{enum | from: enum.from + enum.step}, fun.(enum.from, acc), fun)
+
+  def reduce(%{from: from, to: to}, {:cont, acc}, _fun) when from > to, do: {:done, acc}
+
+  def reduce(enum = %{from: from, to: to, step: step}, {:cont, acc}, fun) do
+    reduce(%{enum | from: from + step}, fun.(from, acc), fun)
   end
 
   def member?(_,_) do
