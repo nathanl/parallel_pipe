@@ -14,6 +14,18 @@ IO.puts ""
 IO.puts "--------------------------"
 IO.puts ""
 
+IO.puts "Now the same effect, but using a very simple Enumerable"
+IO.puts "implementation for a StreamTest struct, using the Enumerable.Mixin mixin"
+IO.puts "that I wrote that does most of the boilerplate work."
+IO.puts "Calling StreamTest.mindreader2 | Enum.take(3)."
+IO.puts ""
+
+StreamTest.mindreader2 |> Enum.take(3) |> IO.inspect
+
+IO.puts ""
+IO.puts "--------------------------"
+IO.puts ""
+
 simplest_one_item_lazy_enumerable = fn {:cont, acc}, reducer -> 
   # not calculated until we are enumerated
   {_now_what, new_acc} = reducer.(:calendar.local_time(), acc)
