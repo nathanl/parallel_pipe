@@ -12,21 +12,29 @@ defmodule Debug do
 end
 
 defmodule Steve do # "What kind of a wrapping name is 'Steve'?" - FotC
-  defstruct enum: nil
+  defstruct enum: nil, max_buffer: -1
 
-  def wrap(enum), do: %Steve{enum: enum}
+  def wrap(enum),             do: %Steve{enum: enum}
+  def wrap(enum, max_buffer), do: %Steve{enum: enum, max_buffer: max_buffer}
 end
 
 defimpl Enumerable, for: Steve do
   def reduce(steve, {cmd, acc}, fun) do
     parent = self
     child = spawn_link fn -> 
-      Enum.each(steve.enum, fn el -> 
+      Enum.reduce(steve.enum, steve.max_buffer, fn el, buffer_left ->
+        if buffer_left == 0 do
+          IO.puts "Child: Buffer is full.  Waiting for an ack from my parent."
+          receive do: (:ack -> nil)
+          IO.puts "Child: I got the ack."
+          buffer_left = 1
+        end
         Debug.print "SENT", self, parent, el
-        send parent, {self, :have_an_element, el} 
+        send parent, {self, :have_an_element, el}
+        buffer_left - 1
       end)
-      Debug.print "SENT", self, parent, ":done"
-      send parent, {self, :done}
+      Debug.print "SENT", self, parent, ":thats_all"
+      send parent, {self, :thats_all}
     end
 
     recv(child, {cmd, acc}, fun)
@@ -38,9 +46,10 @@ defimpl Enumerable, for: Steve do
     receive do
       {^child, :have_an_element, el} ->
         Debug.print "RCVD", child, self, el, 30
+        send child, :ack
         recv(child, fun.(el, acc), fun)
-      {^child, :done} ->
-        Debug.print "RCVD", child, self, ":done", 30
+      {^child, :thats_all} ->
+        Debug.print "RCVD", child, self, ":thats_all", 30
         {:done, acc}
     end
   end

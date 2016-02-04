@@ -2,17 +2,24 @@
 # in a child process.
 
 defmodule Steve do # "What kind of a wrapping name is 'Steve'?" - FotC
-  defstruct enum: nil
+  defstruct enum: nil, max_buffer: -1
 
-  def wrap(enum), do: %Steve{enum: enum}
+  def wrap(enum),             do: %Steve{enum: enum}
+  def wrap(enum, max_buffer), do: %Steve{enum: enum, max_buffer: max_buffer}
 end
 
 defimpl Enumerable, for: Steve do
   def reduce(steve, {cmd, acc}, callback) do
     parent = self
     child = spawn_link fn -> 
-      # TODO: limit to 10 in the send queue
-      Enum.each(steve.enum, fn el -> send parent, {self, :have_an_element, el} end)
+      Enum.reduce(steve.enum, steve.max_buffer, fn el, buffer_left ->
+        if buffer_left == 0 do
+          receive do: (:ack -> nil)
+          buffer_left = 1
+        end
+        send parent, {self, :have_an_element, el}
+        buffer_left - 1
+      end)
       send parent, {self, :thats_all}
     end
 
@@ -24,6 +31,7 @@ defimpl Enumerable, for: Steve do
   defp recv(child, {:cont, acc}, callback)     do
     receive do
       {^child, :have_an_element, el} -> 
+        send child, :ack
         {new_cmd, new_acc} = callback.(el, acc)
         recv(child, {new_cmd, new_acc}, callback)
       {^child, :thats_all} -> 
@@ -32,8 +40,6 @@ defimpl Enumerable, for: Steve do
   end
 
   defp halt(child, acc) do
-    # TODO question: if the parent dies, does the child die?
-    # if not, we need to kill the children's children too in this case.
     Process.exit(child, :normal)
     {:halted, acc}
   end
