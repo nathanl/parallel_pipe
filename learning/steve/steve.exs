@@ -11,15 +11,18 @@ end
 defimpl Enumerable, for: Steve do
   def reduce(steve, {cmd, acc}, callback) do
     parent = self
+
+    send_to_parent_with_buffering = fn el, buffer_remaining ->
+      if buffer_remaining == 0 do
+        receive do: (:ack -> nil)
+        buffer_remaining = 1
+      end
+      send parent, {self, :have_an_element, el}
+      buffer_remaining - 1
+    end
+
     child = spawn_link fn -> 
-      Enum.reduce(steve.enum, steve.max_buffer, fn el, buffer_left ->
-        if buffer_left == 0 do
-          receive do: (:ack -> nil)
-          buffer_left = 1
-        end
-        send parent, {self, :have_an_element, el}
-        buffer_left - 1
-      end)
+      Enum.reduce(steve.enum, steve.max_buffer, send_to_parent_with_buffering)
       send parent, {self, :thats_all}
     end
 
@@ -32,8 +35,8 @@ defimpl Enumerable, for: Steve do
     receive do
       {^child, :have_an_element, el} -> 
         send child, :ack
-        {new_cmd, new_acc} = callback.(el, acc)
-        recv(child, {new_cmd, new_acc}, callback)
+        result = {new_cmd, new_acc} = callback.(el, acc)
+        recv(child, result, callback)
       {^child, :thats_all} -> 
         {:done, acc}
     end

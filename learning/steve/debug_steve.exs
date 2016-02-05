@@ -21,17 +21,19 @@ end
 defimpl Enumerable, for: Steve do
   def reduce(steve, {cmd, acc}, fun) do
     parent = self
+
     child = spawn_link fn -> 
-      Enum.reduce(steve.enum, steve.max_buffer, fn el, buffer_left ->
-        if buffer_left == 0 do
+      Enum.reduce(steve.enum, steve.max_buffer, fn el, buffer_remaining ->
+        :timer.sleep(1)
+        if buffer_remaining == 0 do
           IO.puts "Child: Buffer is full.  Waiting for an ack from my parent."
           receive do: (:ack -> nil)
           IO.puts "Child: I got the ack."
-          buffer_left = 1
+          buffer_remaining = 1
         end
         Debug.print "SENT", self, parent, el
         send parent, {self, :have_an_element, el}
-        buffer_left - 1
+        buffer_remaining - 1
       end)
       Debug.print "SENT", self, parent, ":thats_all"
       send parent, {self, :thats_all}
@@ -43,11 +45,13 @@ defimpl Enumerable, for: Steve do
   defp recv(child, {:suspend, acc}, fun), do: {:suspended, acc, &(recv(child, &1, fun))}
   defp recv(child, {:halt, acc}, _fun),   do: halt(child, acc)
   defp recv(child, {:cont, acc}, fun)     do
+    :timer.sleep(100)
     receive do
       {^child, :have_an_element, el} ->
         Debug.print "RCVD", child, self, el, 30
+        {new_cmd, new_acc} = fun.(el, acc)
         send child, :ack
-        recv(child, fun.(el, acc), fun)
+        recv(child, {new_cmd, new_acc}, fun)
       {^child, :thats_all} ->
         Debug.print "RCVD", child, self, ":thats_all", 30
         {:done, acc}
