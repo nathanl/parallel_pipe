@@ -106,14 +106,16 @@ defmodule MyEnum do
 
     apple_result = apple_whistle.({:cont, apple_saucer})
     plum_result  = plum_whistle.({:cont, plum_saucer})
-    results = [apple_result, plum_result]
+    results      = [apple_result, plum_result]
 
     if Enum.any?(results, &(elem(&1, 0) == :done)) do
       # if any dumb worker is still waiting to be told what to do (eg, he can
       # find more plums but the other guy cannot find more apples), tell him to
       # :halt - go home for the day
       results
-      |> Enum.filter(&(elem(&1, 0) == :suspended))
+      |> Enum.filter(fn (result) ->
+        elem(result, 0) == :suspended
+      end)
       |> Enum.each(fn (result) ->
         whistle = elem(result, 2)
         whistle.({:halt, nil})
