@@ -31,8 +31,10 @@ defmodule Assertion do
   end
 
   defmacro assert({operator, _, [lhs, rhs]}) do
-    quote bind_quoted: [operator: operator, lhs: lhs, rhs: rhs] do
-      Assertion.Test.assert(operator, lhs, rhs)
+    raw_lhs =  Macro.to_string(lhs)
+    raw_rhs =  Macro.to_string(rhs)
+    quote do
+      Assertion.Test.assert(unquote(operator), unquote(lhs), unquote(rhs), unquote(raw_lhs), unquote(raw_rhs))
     end
   end
 end
@@ -53,24 +55,24 @@ defmodule Assertion.Test do
     end
   end                                                      
 
-  def assert(:==, lhs, rhs) when lhs == rhs do
+  def assert(:==, lhs, rhs, _raw_lhs, _raw_rhs) when lhs == rhs do
     :ok
   end
-  def assert(:==, lhs, rhs) do
+  def assert(:==, lhs, rhs, raw_lhs, raw_rhs) do
     {:fail, """
-      Expected:       #{lhs}
-      to be equal to: #{rhs}
+      Expected:       #{lhs} (#{raw_lhs})
+      to be equal to: #{rhs} (#{raw_rhs})
       """
     }
   end
 
-  def assert(:>, lhs, rhs) when lhs > rhs do
+  def assert(:>, lhs, rhs, _raw_lhs, _raw_rhs) when lhs > rhs do
     :ok
   end
-  def assert(:>, lhs, rhs) do
+  def assert(:>, lhs, rhs, raw_lhs, raw_rhs) do
     {:fail, """
-      Expected:           #{lhs}
-      to be greater than: #{rhs}
+      Expected:           #{lhs} (#{raw_lhs})
+      to be greater than: #{rhs} (#{raw_rhs})
       """
     }
   end
