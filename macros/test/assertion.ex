@@ -6,16 +6,21 @@
 # We make no guarantees that this code is fit for any purpose. 
 # Visit http://www.pragmaticprogrammer.com/titles/cmelixir for more book information.
 #---
+# Subsequently modified by me for learning purposes.
+#--
 defmodule Assertion do
 
   defmacro __using__(_options) do
     quote do
       import unquote(__MODULE__)
+      # every time we do `@tests something`, add that to our lists of tests
       Module.register_attribute __MODULE__, :tests, accumulate: true
+      # tell the consuming module, "before you compile, run my before_compile macro"
       @before_compile unquote(__MODULE__)
     end
   end
 
+  # we do this last because only then does @tests have a complete list
   defmacro __before_compile__(_env) do
     quote do
       def run, do: Assertion.Test.run(@tests, __MODULE__)     
@@ -31,6 +36,8 @@ defmodule Assertion do
   end
 
   defmacro assert({operator, _, [lhs, rhs]}) do
+    # Get the unevaluated code that was passed to the assertion so that we can use that in failure messages.
+    # Eg, "you thought 5 + 5 would equal 9" instead of just "you thought 10 would equal 9"
     raw_lhs =  Macro.to_string(lhs)
     raw_rhs =  Macro.to_string(rhs)
     quote do
