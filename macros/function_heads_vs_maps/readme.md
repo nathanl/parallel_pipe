@@ -8,3 +8,11 @@ Findings:
 - `elixirc [filename]` is in fact much slower for the function heads version. For large enough range values, I waited a couple of minutes and killed the compilation process. For small enough ranges that it could finish, opening `iex` and trying `NumToString1.lookup_all` vs `NumToString2.lookup_all`, I couldn't subjectively see any difference in speed.
 
 Want to test some more...
+
+See also: http://stackoverflow.com/questions/28719263/elixir-erlang-fast-lookup-with-static-table
+iee pt. E 
+Athens, GA 30606also: http://stackoverflow.com/questions/28719263/elixir-erlang-fast-lookup-with-static-table
+
+https://github.com/elixir-lang/elixir/blob/5f276918ac6505693c7adca31d95e24d480f0869/lib/elixir/unicode/unicode.ex#L71-L79
+
+http://stackoverflow.com/questions/35677865/is-map-lookup-in-elixir-o1
