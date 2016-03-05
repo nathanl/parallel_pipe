@@ -54,6 +54,7 @@ My method was this:
 Not super scientific, especially since I just did each run once (I'm impatient) and was doing other stuff on the computer while I waited. But the results were still interesting.
 
 **Elixir 1.1.1 / Erlang 17**
+
 | Entries | map compile | map run | fh compile | fh run |
 |-------------------------------------------------------|
 |020,000  |   01.3s     | 000.9s  | 019.0s     | 0.4s   |
@@ -65,6 +66,7 @@ Not super scientific, especially since I just did each run once (I'm impatient) 
 The "no thx" is where I got too impatient to try that. :D
 
 **Elixir 1.2.3 / Erlang 18**
+
 | Entries | map compile | map run | fh compile | fh run |
 |-------------------------------------------------------|
 |020,000  |   01.2s     | 000.4s  | 018.7s     | 0.4s   |
