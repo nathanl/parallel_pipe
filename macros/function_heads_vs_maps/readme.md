@@ -55,25 +55,25 @@ Not super scientific, especially since I just did each run once (I'm impatient) 
 
 **Elixir 1.1.1 / Erlang 17**
 
-| Entries | map compile | map run | fh compile | fh run |
-|-------------------------------------------------------|
-|020,000  |   01.3s     | 000.9s  | 019.0s     | 0.4s   |
-|040,000  |   02.1s     | 002.5s  | 068.7s     | 0.4s   |
-|080,000  |   04.0s     | 008.5s  | 229.9s     | 0.4s   |
-|160,000  |   08.4s     | 033.5s  | 876.7s     | 0.6s   |
-|320,000  |   16.2s     | 140.0s  | no thx     | nope   |
+    | Entries | map compile | map run | fh compile | fh run |
+    |-------------------------------------------------------|
+    |020,000  |   01.3s     | 000.9s  | 019.0s     | 0.4s   |
+    |040,000  |   02.1s     | 002.5s  | 068.7s     | 0.4s   |
+    |080,000  |   04.0s     | 008.5s  | 229.9s     | 0.4s   |
+    |160,000  |   08.4s     | 033.5s  | 876.7s     | 0.6s   |
+    |320,000  |   16.2s     | 140.0s  | no thx     | nope   |
 
 The "no thx" is where I got too impatient to try that. :D
 
 **Elixir 1.2.3 / Erlang 18**
 
-| Entries | map compile | map run | fh compile | fh run |
-|-------------------------------------------------------|
-|020,000  |   01.2s     | 000.4s  | 018.7s     | 0.4s   |
-|040,000  |   02.0s     | 000.4s  | 065.6s     | 0.4s   |
-|080,000  |   03.6s     | 000.5s  | 237.8s     | 0.5s   |
-|160,000  |   07.2s     | 000.5s  | 931.6s     | 0.6s   |
-|320,000  |   14.4s     | 000.7s  | no thx     | nope   |
+    | Entries | map compile | map run | fh compile | fh run |
+    |-------------------------------------------------------|
+    |020,000  |   01.2s     | 000.4s  | 018.7s     | 0.4s   |
+    |040,000  |   02.0s     | 000.4s  | 065.6s     | 0.4s   |
+    |080,000  |   03.6s     | 000.5s  | 237.8s     | 0.5s   |
+    |160,000  |   07.2s     | 000.5s  | 931.6s     | 0.6s   |
+    |320,000  |   14.4s     | 000.7s  | no thx     | nope   |
 
 Here's how it looks to me: with older versions of Elixr and Erlang, compilation times seemed to grow roughly linearly for the map lookup version and worse than linearly for the function head version. But the runtime speed for the function head version was much better, maybe `O(log N)`, where the runtime speed for the map version was worse than `O(N)`. **The compile-time hit seemed to be worth the runtime speedup**.
 
